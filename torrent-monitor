@@ -1,0 +1,50 @@
+#!/bin/bash
+
+connectionName="$1"
+clientCommand="$2"
+processName="$3"
+
+# Handle VPN
+nmcli con status id "$connectionName" &>/dev/null
+
+if [[ $? == 0 ]]
+then
+  echo "Already connected to VPN."
+else
+  echo "Connecting to VPN..."
+  nmcli con up id "$connectionName"
+  if [ $? != 0 ]
+  then
+    echo "Failed to establish VPN connection"
+  fi
+fi
+
+# Start Client
+echo "Starting client..."
+$clientCommand &
+echo "Started client."
+
+# Monitor VPN
+echo "Monitoring client..."
+{
+    dbus-monitor --system "type='signal',interface='org.freedesktop.NetworkManager.VPN.Connection',member='VpnStateChanged'" |
+      {
+        (while read -r line
+         do
+           if [ x"$(echo "$line" | grep 'uint32 7')" != x ]
+           then
+             echo "VPN disconnect detected."
+             for i in `pgrep $processName`
+             do
+               # Get process name.
+               name=$(ps -ocommand= -p $i | awk -F/ '{print $NF}' | awk '{print $1}')
+
+               echo "Attempting to client..."
+               # Kill process.
+               kill -9 $i 
+             done
+             echo "Killed client."
+           fi
+         done)
+      }
+  }
