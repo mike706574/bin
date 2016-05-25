@@ -1,0 +1,8 @@
+#!/bin/bash
+if [ "$#" -eq 1 ]; then
+  youtube-dl $1
+elif [ "$#" -eq 2 ]; then
+  youtube-dl -o "$2.%(ext)s" $1
+else
+  echo "Expected 1 or 2 arguments, but got $#"
+fi
