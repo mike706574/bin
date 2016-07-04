@@ -1,2 +1,12 @@
 #!/bin/bash
-youtube-dl --extract-audio --audio-format mp3 $1
+
+if [ "$#" -ne 2 ]; then
+    echo "WRONG"
+    exit 1
+fi
+
+name=$1
+url=$2
+
+mkdir "$name"
+youtube-dl --extract-audio --audio-format mp3 -o "$name/%(playlist_index)s-%(title)s.%(ext)s" $url

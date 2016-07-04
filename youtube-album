@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ "$#" -ne 3 ]; then
+    echo "WRONG"
+    exit 1
+fi
+
+artist=$1
+album=$2
+url=$3
+
+echo "Artist: ${artist}"
+echo "Album: ${album}"
+
+mkdir "$album"
+youtube-dl --extract-audio --audio-format mp3 -o "$album/%(playlist_index)s-%(title)s.%(ext)s" $url
+manatee "$artist" "$album" "$album"
