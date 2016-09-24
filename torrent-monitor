@@ -2,7 +2,6 @@
 
 connectionName="$1"
 clientCommand="$2"
-processName="$3"
 
 # Handle VPN
 nmcli con status id "$connectionName" &>/dev/null
@@ -34,14 +33,14 @@ echo "Monitoring client..."
            if [ x"$(echo "$line" | grep 'uint32 7')" != x ]
            then
              echo "VPN disconnect detected."
-             for i in `pgrep $processName`
+             for i in `pgrep $clientCommand`
              do
                # Get process name.
                name=$(ps -ocommand= -p $i | awk -F/ '{print $NF}' | awk '{print $1}')
 
                echo "Attempting to client..."
                # Kill process.
-               kill -9 $i 
+               kill -9 $i
              done
              echo "Killed client."
            fi

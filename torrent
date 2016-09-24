@@ -1,0 +1,2 @@
+#!/bin/bash
+torrent-monitor "PIA - US Midwest" "transmission-gtk"
