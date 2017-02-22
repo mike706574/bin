@@ -1,30 +1,43 @@
 #!/bin/bash
 
+if [[ $UID != 0 ]]; then
+    echo "Please run this script with sudo:"
+    echo "sudo $0 $*"
+    exit 1
+fi
+
 connectionName="$1"
-clientCommand="$2"
 
 # Handle VPN
-nmcli con status id "$connectionName" &>/dev/null
+nmcli con show --active | grep "$connectionName"
 
-if [[ $? == 0 ]]
+if [[ $? -ne 0 ]]
 then
-  echo "Already connected to VPN."
-else
-  echo "Connecting to VPN..."
-  nmcli con up id "$connectionName"
-  if [ $? != 0 ]
-  then
-    echo "Failed to establish VPN connection"
-  fi
+  echo "Not connected to VPN."
+  exit 1
 fi
 
 # Start Client
-echo "Starting client..."
-$clientCommand &
-echo "Started client."
+echo "Starting daemon..."
+systemctl start transmission-daemon
 
-# Monitor VPN
-echo "Monitoring client..."
+if [[ $? -ne 0 ]]
+then
+  echo "Failed to start daemon."
+  exit 2
+fi
+
+echo "Started daemon."
+
+# Stop daemon on exit
+function finish {
+  systemctl stop transmission-daemon
+  echo "Stopped daemon."
+}
+trap finish EXIT
+
+# Stop daemon when VPN disconnects
+echo "Monitoring VPN..."
 {
     dbus-monitor --system "type='signal',interface='org.freedesktop.NetworkManager.VPN.Connection',member='VpnStateChanged'" |
       {
@@ -33,16 +46,9 @@ echo "Monitoring client..."
            if [ x"$(echo "$line" | grep 'uint32 7')" != x ]
            then
              echo "VPN disconnect detected."
-             for i in `pgrep $clientCommand`
-             do
-               # Get process name.
-               name=$(ps -ocommand= -p $i | awk -F/ '{print $NF}' | awk '{print $1}')
-
-               echo "Attempting to client..."
-               # Kill process.
-               kill -9 $i
-             done
-             echo "Killed client."
+             systemctl stop transmission-daemon
+             echo "Stopped daemon."
+             exit 0
            fi
          done)
       }
